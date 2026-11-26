@@ -1,42 +1,46 @@
 #!/usr/bin/env python3
-"""Texts From Your Future Self — make.fun entry.
+"""Future-self text writer for the make.fun bounty.
 
-Writes one funny text message from the writer's future self to
-$MAKEFUN_OUTPUT_DIR/entry.txt (default /output), validating the gate
-(UTF-8 text, 1-200 characters, not only whitespace) before writing.
-Stdlib only.
+One joke text, kept inside the 200-character gate, is checked and then
+saved as entry.txt inside the folder named by MAKEFUN_OUTPUT_DIR
+(or /output when that variable is unset). Only the standard library
+is used, so the program runs anywhere python3 exists.
 """
 
-import os
-import sys
+from pathlib import Path
+import os, sys
 
-ENTRY = (
+TEXT = (
     "Future you: delete the app that counts your steps. In 2031 it "
     "testifies against you. In court. Your Honor, the defendant walked "
     "400 steps that day. He was 'resting.'"
 )
 
+MAX_CHARS = 200
 
-def main() -> int:
-    line = ENTRY.strip()
-    if not line:
-        print("error: entry is empty", file=sys.stderr)
-        return 1
-    if "\n" in line or "\r" in line:
-        print("error: entry must be a single line", file=sys.stderr)
-        return 1
-    if len(line) > 200:
-        print(f"error: entry is {len(line)} chars, over the 200-char gate",
-              file=sys.stderr)
-        return 1
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(line + "\n")
-    print(f"wrote {len(line)} chars to {path}")
+
+def fail(message):
+    sys.stderr.write("entry rejected: " + message + "\n")
+    return 1
+
+
+def run():
+    text = TEXT.strip()
+    if not text:
+        return fail("nothing to write")
+    if any(mark in text for mark in ("\n", "\r")):
+        return fail("the text must fit on one line")
+    if len(text) > MAX_CHARS:
+        return fail(
+            "text is %d characters, gate allows %d" % (len(text), MAX_CHARS)
+        )
+    folder = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / "entry.txt"
+    target.write_text(text + "\n", encoding="utf-8")
+    print("entry.txt written: %d characters" % len(text))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(run())
